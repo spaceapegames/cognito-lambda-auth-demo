@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  CognitoUserPoolArn:
+    Description: "Userpool which must be auth'd against"
+    Type: String
+    Default: "arn:aws:cognito-idp:us-east-1:089266475114:userpool/us-east-1_MkGaSyQR0"
+
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'*'"
+      AllowOrigin: "'*'"
+      AllowHeaders: "'*'"
+    Auth:
+      DefaultAuthorizer: CognitoAuth
+      AddDefaultAuthorizerToCorsPreflight: false
+      Authorizers:
+        SpaceapeAuth:
+          UserPoolArn: !Ref CognitoUserPoolArn
+    GatewayResponses:
+      DEFAULT_4XX:
+        ResponseTemplates:
+          "application/json": '{ "message": "access denied!" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+#            # might not need these other two:
+#            Access-Control-Allow-Methods: "'*'"
+#            Access-Control-Allow-Headers: "'*'"
+
+Resources:
+  EdgeAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: edge-lambda-auth-demo
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: edge/function.zip
+      Role: !Sub "${EdgeExecutionRole.Arn}"
+      Timeout: 3
+      AutoPublishAlias: latest
+
+  BackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs8.10
+      Events:
+        hello:
+          Type: Api
+          Properties:
+            Path: /helloWorld
+            Method: get
+      InlineCode: |
+        exports.handler = async (event) => {
+          let response = {
+            statusCode: 200,
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "GET"
+            },
+            body: "Hello World!"
+          }
+          return response
+        }
+
+  EdgeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service:
+            - "edgelambda.amazonaws.com"
+            - "lambda.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      Policies:
+      - PolicyName: "logs"
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: "Allow"
+            Action: "logs:CreateLogGroup"
+            Resource: "*"
+          - Effect: "Allow"
+            Action: [ "logs:CreateLogStream", "logs:PutLogEvents" ]
+            Resource: "*"
+
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+            - "s3:GetObject"
+            Effect: "Allow"
+            Resource: !Sub "arn:aws:s3:::${WebsiteBucket}/*"
+            Principal:
+              CanonicalUser: !Sub "${OriginAccessIdentity.S3CanonicalUserId}"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+            TargetOriginId: "S3-authWebsite"
+            ViewerProtocolPolicy: "https-only"
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: !Sub "${EdgeAuthFunction.Version}"
+            ForwardedValues:
+              Cookies:
+                Forward: "none"
+              QueryString: false
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: "/index.html"
+        DefaultRootObject: "/index.html"
+        Enabled: true
+        Origins:
+          - DomainName: !Sub "${WebsiteBucket}.s3.amazonaws.com"
+            Id: "S3-authWebsite"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${OriginAccessIdentity}"
+
+  OriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "Allow CloudFront access"
+
+Outputs:
+  ApiEndpoint:
+    Description: Backend API Endpoint
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  BucketName:
+    Description: S3 Bucket Name
+    Value: !Ref WebsiteBucket
+  DomainName:
+    Description: Cloudfront Domain Name
+    Value: !Sub "${CloudFrontDistribution.DomainName}"
