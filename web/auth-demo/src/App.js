@@ -34,7 +34,14 @@ function App() {
                 <Switch>
                     <Route path="/" exact render={() => <Redirect to="/login"/>}/>
                     <Route path="/login" exact render={() => <Login/>}/>
-                    <Route path="/protected" exact component={withAuthenticator(LoadableProtected)}/>
+                    <Route path="/protected" exact component={withAuthenticator(LoadableProtected, {
+                        signUpConfig: {
+                            hiddenDefaults: ["phone_number"],
+                            signUpFields: [
+                                {label: "Name", key: "name", placeholder: "Name", required: true, displayOrder: 1},
+                            ]
+                        }
+                    })}/>
                 </Switch>
             </BrowserRouter>
         </div>
