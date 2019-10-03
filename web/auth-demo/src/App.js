@@ -8,13 +8,13 @@ import Loadable from "react-loadable";
 
 Amplify.configure({
     Auth: {
-        region: 'us-east-1',
-        userPoolId: 'us-east-1_MkGaSyQR0',
-        userPoolWebClientId: '6o5vi422a59jedm481lhaba418',
+        region: '__(AWS_REGION)__',
+        userPoolId: '__(USERPOOL_ID)__',
+        userPoolWebClientId: '__(CLIENT_ID)__',
         cookieStorage: {
-            domain: 'd1nowv12dgus7e.cloudfront.net',
+            domain: '__(CF_DOMAIN_NAME)__',
             path: '/',
-            expires: 1,
+            expires: 30,
             secure: true
         },
     }

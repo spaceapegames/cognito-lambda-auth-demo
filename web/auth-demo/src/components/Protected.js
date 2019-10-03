@@ -3,7 +3,7 @@ import { Auth } from 'aws-amplify';
 import {withRouter} from "react-router-dom";
 import axios from "axios";
 
-const BASE_URI = "https://z7d7meaf49.execute-api.us-east-1.amazonaws.com/Prod";
+const BASE_URI = "__(API_ENDPOINT)__";
 
 const callBackend = async () => {
     let session = await Auth.currentSession();

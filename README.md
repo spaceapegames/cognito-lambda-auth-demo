@@ -12,7 +12,9 @@ $ USERPOOL_NAME=YOUR_POOL_NAME
 $ USERPOOL_ID=$(aws cognito-idp create-user-pool \
  --pool-name ${USERPOOL_NAME} \
  --username-attributes email \
- --auto-verified-attributes email | jq -r .[].Id)
+ --auto-verified-attributes email \
+ --schema Name=name,Required=true \
+ | jq -r .[].Id)
 
 $ CLIENT_ID=$(aws cognito-idp create-user-pool-client \
  --user-pool-id ${USERPOOL_ID} \
@@ -26,9 +28,9 @@ Take note of `USERPOOL_ID` and `CLIENT_ID`, you'll need them throughout.
 We need to substitute some values into edge/index.js. Make sure AWS_REGION is exported, then:
 
 ```
-$ sed -i -e "s/__(AWS_REGION)__/${AWS_REGION}/g" edge/index.js
-$ sed -i -e "s/__(USERPOOL_ID)__/${USERPOOL_ID}/g" edge/index.js
-$ sed -i -e "s/__(JWKS)__/$(curl https://cognito-idp.${AWS_REGION}.amazonaws.com/${USERPOOL_ID}/.well-known/jwks.json)/"
+$ sed -i -e "s/__(AWS_REGION)__/${AWS_REGION}/g" edge/index.js && \
+  sed -i -e "s/__(USERPOOL_ID)__/${USERPOOL_ID}/g" edge/index.js && \
+  sed -i -e "s/__(JWKS)__/$(curl https://cognito-idp.${AWS_REGION}.amazonaws.com/${USERPOOL_ID}/.well-known/jwks.json)/"
 
 $ cd edge && zip -r function.zip . && cd .. # package the function ready for deployment below
 ```
@@ -49,6 +51,37 @@ $ sam deploy --stack-name cognito-lambda-auth-demo --capabilities CAPABILITY_IAM
 
 ### Build Front End
 
+This involves updating and compiling the React application, uploading it to the S3 bucket created above, and
+invalidating the CloudFront cache.
+
+```
+## Setup some variables ##
+$ aws cloudformation describe-stacks --stack-name cognito-lambda-auth-demo >/tmp/cf.json && \
+  API_ENDPOINT=$(cat /tmp/cf.json | jq -r '.Stacks[0].Outputs[]|select(.OutputKey=="ApiEndpoint").OutputValue') && \
+  BUCKET_NAME=$(cat /tmp/cf.json | jq -r '.Stacks[0].Outputs[]|select(.OutputKey=="BucketName").OutputValue') && \
+  DOMAIN_NAME=$(cat /tmp/cf.json | jq -r '.Stacks[0].Outputs[]|select(.OutputKey=="DomainName").OutputValue') && \
+  CF_DIST_ID=$(cat /tmp/cf.json | jq -r '.Stacks[0].Outputs[]|select(.OutputKey=="CloudFrontDistributionId").OutputValue') && \
+  rm /tmp/cf.json
+
+## Do some sed-ing ##
+# web/auth-demo/src/App.js
+$ sed -i -e "s/__(AWS_REGION)__/${AWS_REGION}/g" web/auth-demo/src/App.js && \
+  sed -i -e "s/__(USERPOOL_ID)__/${USERPOOL_ID}/g" web/auth-demo/src/App.js && \
+  sed -i -e "s/__(CLIENT_ID)__/${CLIENT_ID}/g" web/auth-demo/src/App.js && \
+  sed -i -e "s/__(CF_DOMAIN_NAME)__/${DOMAIN_NAME}/g" web/auth-demo/src/App.js
+
+# web/auth-demo/src/components/Protected.js
+$ sed -i -e "s/__(API_ENDPOINT)__/${API_ENDPOINT}/g" web/auth-demo/src/components/Protected.js
+
+## Build ##
+$ cd web/auth-demo && yarn && yarn build
+
+## Deploy ##
+$ cd web/auth-demo/build && \
+  aws s3 sync --acl public-read --sse --delete . s3://${BUCKET_NAME}/ && \
+  aws cloudfront create-invalidation --distribution-id ${CF_DIST_ID} --paths '/*'
+
+```
 
 
 

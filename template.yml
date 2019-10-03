@@ -156,6 +156,6 @@ Outputs:
   DomainName:
     Description: Cloudfront Domain Name
     Value: !Sub "${CloudFrontDistribution.DomainName}"
-  CloudfrontDistributionId:
+  CloudFrontDistributionId:
     Description: Cloudfront Domain Name
     Value: !Ref CloudFrontDistribution
