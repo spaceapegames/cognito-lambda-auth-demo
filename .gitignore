@@ -1,2 +1,5 @@
 *.zip
 *.idea/
+web/auth-demo/build/*
+web/auth-demo/node_modules
+*.log

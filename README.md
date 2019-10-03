@@ -19,7 +19,7 @@ $ CLIENT_ID=$(aws cognito-idp create-user-pool-client \
  --client-name SomeClientName --no-generate-secret | jq -r .[].ClientId)
 ```
 
-Take note of USERPOOL_ID and CLIENT_ID, you'll need them throughout.
+Take note of `USERPOOL_ID` and `CLIENT_ID`, you'll need them throughout.
 
 ### Build Lambda@Edge Function
 
@@ -30,7 +30,7 @@ $ sed -i -e "s/__(AWS_REGION)__/${AWS_REGION}/g" edge/index.js
 $ sed -i -e "s/__(USERPOOL_ID)__/${USERPOOL_ID}/g" edge/index.js
 $ sed -i -e "s/__(JWKS)__/$(curl https://cognito-idp.${AWS_REGION}.amazonaws.com/${USERPOOL_ID}/.well-known/jwks.json)/"
 
-$ cd edge && zip -r function.zip . && cd .. #package the function for deployment
+$ cd edge && zip -r function.zip . && cd .. # package the function ready for deployment below
 ```
 
 ### Build Infrastructure
@@ -41,13 +41,15 @@ All of the infra is encapsulated in `template.yaml`, a SAM (CloudFormation) temp
 have an S3 bucket in which to store the packaged code. Then run:
 
 ```
-$
-
 $ sam package --s3-bucket ${YOUR_S3_BUCKET} --output-template-file packaged.yml
 
 $ sam deploy --stack-name cognito-lambda-auth-demo --capabilities CAPABILITY_IAM --template-file packaged.yml \
     --parameter-overrides CognitoUserPoolArn=$(aws cognito-idp describe-user-pool --user-pool-id $USERPOOL_ID | jq -r .[].Arn)
 ```
+
+### Build Front End
+
+
 
 
 

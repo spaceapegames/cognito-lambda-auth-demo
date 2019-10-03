@@ -55,6 +55,7 @@ Resources:
             Method: get
       InlineCode: |
         exports.handler = async (event) => {
+          console.log(JSON.stringify(event, null, 2));
           let response = {
             statusCode: 200,
             headers: {
@@ -155,3 +156,6 @@ Outputs:
   DomainName:
     Description: Cloudfront Domain Name
     Value: !Sub "${CloudFrontDistribution.DomainName}"
+  CloudfrontDistributionId:
+    Description: Cloudfront Domain Name
+    Value: !Ref CloudFrontDistribution
