@@ -5,7 +5,7 @@ let jwt = require('jsonwebtoken');
 // Ripped off from here https://github.com/vthub/aws-react-jwt-auth/blob/master/lambda/index.js
 // and here https://github.com/aws-samples/authorization-lambda-at-edge/blob/master/node/lambda-edge-function/index.js
 
-// __(JWKS)__ is obtained from https://cognito-idp.$AWS_REGION.amazonaws.com/$USERPOOL_ID/.well-known/jwks.json
+// JWKS are obtained from https://cognito-idp.$AWS_REGION.amazonaws.com/$USERPOOL_ID/.well-known/jwks.json
 // (it is publicly available so OK to be in source control)
 var JWKS = `__(JWKS)__`;
 
