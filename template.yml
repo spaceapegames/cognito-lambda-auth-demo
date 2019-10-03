@@ -5,20 +5,22 @@ Parameters:
   CognitoUserPoolArn:
     Description: "Userpool which must be auth'd against"
     Type: String
-    Default: "arn:aws:cognito-idp:us-east-1:089266475114:userpool/us-east-1_MkGaSyQR0"
 
 Globals:
   Api:
+    # Apply these (generous) Cors settings to all endpoints:
     Cors:
       AllowMethods: "'*'"
       AllowOrigin: "'*'"
-      AllowHeaders: "'*'"
+      AllowHeaders: "'Authorization'"
     Auth:
       DefaultAuthorizer: CognitoAuth
+      # Don't authenticate Cors pre-flight requests:
       AddDefaultAuthorizerToCorsPreflight: false
       Authorizers:
-        SpaceapeAuth:
+        CognitoAuth:
           UserPoolArn: !Ref CognitoUserPoolArn
+    # We need to make sure Cors happens even on error responses:
     GatewayResponses:
       DEFAULT_4XX:
         ResponseTemplates:
@@ -26,15 +28,13 @@ Globals:
         ResponseParameters:
           Headers:
             Access-Control-Allow-Origin: "'*'"
-#            # might not need these other two:
-#            Access-Control-Allow-Methods: "'*'"
-#            Access-Control-Allow-Headers: "'*'"
+            Access-Control-Allow-Methods: "'*'"
+            Access-Control-Allow-Headers: "'*'"
 
 Resources:
   EdgeAuthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: edge-lambda-auth-demo
       Handler: index.handler
       Runtime: nodejs10.x
       CodeUri: edge/function.zip
@@ -63,7 +63,7 @@ Resources:
                 "Access-Control-Allow-Headers": "*",
                 "Access-Control-Allow-Methods": "GET"
             },
-            body: "Hello World!"
+            body: "Hello " + event.requestContext.authorizer.claims.name + "!"
           }
           return response
         }
@@ -125,6 +125,7 @@ Resources:
               Cookies:
                 Forward: "none"
               QueryString: false
+        # These CustomErrorResponses are required to make React Router function:
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200
