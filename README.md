@@ -1,6 +1,6 @@
 ## Cognito Lambda Auth Demo
 
-This is the accompaniment code for this article: <link to go here>
+This is the accompanying code for this article: https://aws.amazon.com/blogs/gametech/guest-post-how-space-ape-games-delivers-secure-webapps-using-aws/
 
 ## Setup
 
