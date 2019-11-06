@@ -9,8 +9,8 @@ const Login = ({history}) => {
 
     useEffect(() => {
         Auth.currentAuthenticatedUser()
-            .then(setLoggedIn(true))
-            .catch(setLoggedIn(false))
+            .then(_ => setLoggedIn(true))
+            .catch(_ => setLoggedIn(false))
     }, []);
 
     return (
