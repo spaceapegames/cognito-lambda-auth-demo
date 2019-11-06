@@ -1,6 +1,6 @@
 ## Cognito Lambda Auth Demo
 
-This is the accompaniment code for this article: LIIIINK
+This is the accompaniment code for this article: <link to go here>
 
 ## Setup
 
